@@ -35,6 +35,7 @@
  */
 
 import {strPosToUni, uniToStrPos} from 'unicount'
+import fastdiff from 'fast-diff'
 
 export type TextOpComponent = number | string | {d: number}
 export type TextOp = TextOpComponent[]
@@ -51,6 +52,7 @@ export interface TextType<R> {
   apply(doc: R, op: TextOp): R
   transform(op: TextOp, other: TextOp, side: 'left' | 'right'): TextOp
   compose(a: TextOp, b: TextOp): TextOp
+  diff(a: string, b: string): TextOp
   transformPosition(cursor: number, op: TextOp): number
   transformSelection(selection: number | [number, number], op: TextOp): number | [number, number]
 }
@@ -352,6 +354,32 @@ function compose(op1: TextOp, op2: TextOp) {
   return trim(result)
 }
 
+/** Create ops from diffing 2 string documents */
+function diff(str1: string, str2: string) {
+  if (str1 === str2) {
+    return [];
+  }
+
+  const result: TextOp = []
+  const append = makeAppend(result)
+
+  fastdiff(str1, str2).forEach(([op, text]) => {
+    switch(op) {
+      case fastdiff.INSERT:
+        append(text);
+        break;
+      case fastdiff.DELETE:
+        append({d: text.length})
+        break;
+      case fastdiff.EQUAL:
+        append(text.length)
+        break;
+    }
+  })
+
+  return trim(result)
+}
+
 // This operates in unicode offsets to make it consistent with the equivalent
 // methods in other languages / systems.
 const transformPosition = (cursor: number, op: TextOp) => {
@@ -433,7 +461,7 @@ export default function makeType<Snap>(ropeImpl: Rope<Snap>): TextType<Snap> {
 
     transform,
     compose,
-
+    diff,
     transformPosition,
     transformSelection,
   }

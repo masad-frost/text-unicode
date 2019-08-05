@@ -8,6 +8,7 @@
     "test": "test"
   },
   "dependencies": {
+    "fast-diff": "^1.2.0",
     "unicount": "^1.0.0"
   },
   "devDependencies": {
